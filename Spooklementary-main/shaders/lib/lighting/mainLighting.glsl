@@ -20,6 +20,9 @@
 
 #if COLORED_LIGHTING_INTERNAL > 0
     #include "/lib/voxelization/lightVoxelization.glsl"
+    #ifdef FRAGMENT_SHADER
+        #include "/lib/matrix_trail_lights.glsl"
+    #endif
 #endif
 
 #ifdef DO_PIXELATION_EFFECTS
@@ -405,6 +408,10 @@ void DoLighting(inout vec4 color, inout vec3 shadowMult, vec3 playerPos, vec3 vi
 
         // Add some extra non-contrasty detail
         AddSpecialLightDetail(specialLighting, color.rgb, emission);
+        // MatrixCraft trail lights integration
+        vec3 trailLightAcc = vec3(0.0);
+        applyMatrixTrailLights(worldPos, trailLightAcc);
+        specialLighting += trailLightAcc;
 
         #if COLORED_LIGHT_SATURATION != 100
             specialLighting = mix(blockLighting, specialLighting, COLORED_LIGHT_SATURATION * 0.01);
