@@ -9,6 +9,8 @@
 //////////Fragment Shader//////////Fragment Shader//////////Fragment Shader//////////
 #ifdef FRAGMENT_SHADER
 
+uniform sampler2D particleLight; // bound to the particle light texture (additive buffer)
+
 noperspective in vec2 texCoord;
 
 //Pipeline Constants//
@@ -179,6 +181,10 @@ void main() {
 
     color.rgb = mix(color.rgb, color.rgb * GetLuminance(color), 0.60);
 
+    // Sample particle light contribution and additively blend it into the scene
+    // texCoord (or other existing UV) must be used consistently with your pipeline
+    vec3 pLight = texture(particleLight, texCoord).rgb;
+    color.rgb += pLight;
 
     // beginTextM(2, vec2(5));
     // text.fpPrecision = 6;
