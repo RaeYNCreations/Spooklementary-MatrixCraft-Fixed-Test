@@ -20,9 +20,10 @@
 
 #if COLORED_LIGHTING_INTERNAL > 0
     #include "/lib/voxelization/lightVoxelization.glsl"
-    #ifdef FRAGMENT_SHADER
-        #include "/lib/matrix_trail_lights.glsl"
-    #endif
+#endif
+
+#ifdef FRAGMENT_SHADER
+    #include "/lib/matrix_trail_lights.glsl"
 #endif
 
 #ifdef DO_PIXELATION_EFFECTS
@@ -377,6 +378,10 @@ void DoLighting(inout vec4 color, inout vec3 shadowMult, vec3 playerPos, vec3 vi
 
     vec3 blockLighting = lightmapXM * blocklightCol;
 
+    // MatrixCraft trail lights
+    vec3 trailLightAcc = vec3(0.0);
+    applyMatrixTrailLights(worldPos, trailLightAcc);
+
     #if COLORED_LIGHTING_INTERNAL > 0
         // Prepare
         #if defined GBUFFERS_HAND
@@ -409,8 +414,6 @@ void DoLighting(inout vec4 color, inout vec3 shadowMult, vec3 playerPos, vec3 vi
         // Add some extra non-contrasty detail
         AddSpecialLightDetail(specialLighting, color.rgb, emission);
         // MatrixCraft trail lights integration
-        vec3 trailLightAcc = vec3(0.0);
-        applyMatrixTrailLights(worldPos, trailLightAcc);
         specialLighting += trailLightAcc;
 
         #if COLORED_LIGHT_SATURATION != 100
@@ -431,6 +434,9 @@ void DoLighting(inout vec4 color, inout vec3 shadowMult, vec3 playerPos, vec3 vi
         //if (heldItemId != 40000 || heldItemId2 == 40000) // Hold spider eye to see vanilla lighting
         blockLighting = mix(specialLighting, blockLighting, blocklightDecider);
         //if (heldItemId2 == 40000 && heldItemId != 40000) blockLighting = lightVolume.rgb; // Hold spider eye to see light volume
+        #else
+        // When ACL is disabled, add trail lights directly to block lighting
+        blockLighting += trailLightAcc;
     #endif
 
     #if HELD_LIGHTING_MODE >= 1

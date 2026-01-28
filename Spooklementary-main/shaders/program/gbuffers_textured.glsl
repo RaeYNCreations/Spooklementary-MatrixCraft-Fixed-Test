@@ -102,18 +102,20 @@ void main() {
         // Detect bright green/cyan particles (MatrixCraft bullet trails)
         float brightnessCheck = color.r + color.g + color.b;
         if (brightnessCheck > 2.0 && color.g > color.r * 0.8 && color.g > color.b * 0.8) {
-            // This is a MatrixCraft bullet trail - make it VERY emissive!
-            emission = 8.0; // Very bright emission
-            color.rgb = pow(color.rgb, vec3(1.5)); // Boost brightness
-            lmCoordM = vec2(0.0); // Remove shadow influence
-            materialMask = 0.0; // Disable SSAO
+            // This is a MatrixCraft bullet trail
+            emission = 3.5; // Moderate emission for glow (reduced from 8.0)
+            // DON'T modify color.rgb - let it pass through naturally
+            // DON'T zero out lmCoordM - keep lighting information
+            // Instead, boost the block light component slightly for self-illumination
+            lmCoordM.x = max(lmCoordM.x, 0.9); // Ensure it's well-lit without removing lighting
+            materialMask = 0.0; // Disable SSAO for clean look
         }
         // Detect very bright white particles (MatrixCraft impacts)
         else if (brightnessCheck > 2.5 && abs(color.r - color.g) < 0.2 && abs(color.g - color.b) < 0.2) {
             // This is a MatrixCraft impact spark
-            emission = 10.0; // Maximum emission
-            color.rgb = pow(color.rgb, vec3(1.8)); // Super bright
-            lmCoordM = vec2(0.0);
+            emission = 5.0; // High emission (reduced from 10.0)
+            // Keep color natural, don't over-boost
+            lmCoordM.x = max(lmCoordM.x, 0.95); // High self-illumination
             materialMask = 0.0;
         }
         // Original Spooklementary particle detections below
@@ -186,9 +188,11 @@ void main() {
         float VdotS = dot(nViewPos, sunVec);
         float sky = 0.0;
 
-        float prevAlpha = color.a;
+        // Store alpha BEFORE fog application
+        float originalAlpha = color.a;
         DoFog(color, sky, lViewPos, playerPos, VdotU, VdotS, dither, lmCoordM);
-        color.a = prevAlpha;
+        // Blend fog with original alpha instead of overwriting
+        color.a = mix(originalAlpha, color.a, 0.3); // Light fog influence on alpha
     #endif
 
     vec3 translucentMult = mix(vec3(0.666), color.rgb * (1.0 - pow2(pow2(color.a))), color.a);

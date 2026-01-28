@@ -17,7 +17,7 @@ const float MATRIX_TRAIL_RANGE = 256.0; // must match POSITION_RANGE in Java (bl
 // requires sampling the texture (fragment shader only). For non-fragment we
 // provide a stub that returns a far-away position and zero contribution.
 #ifdef FRAGMENT_SHADER
-
+#extension GL_ARB_shading_language_420pack : enable
 layout(binding = 12) uniform sampler2D matrixcraft_trail_lights;
 
 // Camera/world position helpers are expected to be defined by your other includes
@@ -46,20 +46,17 @@ vec3 decodeTrailLightPosition(vec4 texel) {
  * outColor: accumulator to add color into
  */
 void applyMatrixTrailLights(vec3 fragPos, inout vec3 outColor) {
-    // Loop through fixed-size texture width
     for (int i = 0; i < MATRIX_TRAIL_MAX_LIGHTS; i++) {
-        ivec2 coord = ivec2(i, 0);
-        vec4 texel = texelFetch(matrixcraft_trail_lights, coord, 0);
-        // alpha encodes intensity/presence, skip zero
-        if (texel.a <= 0.0039) continue; // ~1/255 threshold
+        // Row 0: position + intensity
+        vec4 posTexel = texelFetch(matrixcraft_trail_lights, ivec2(i, 0), 0);
+        if (posTexel.a <= 0.0039) continue;
 
-        // reconstruct pos and intensity
-        vec3 lightPos = decodeTrailLightPosition(texel);
-        float intensity = texel.a; // 0..1
+        vec3 lightPos = decodeTrailLightPosition(posTexel);
+        float intensity = posTexel.a;
 
-        // If you want per-light color, pack color into texel channels in Java and decode here.
-        // For now use white tinted by intensity (you can change to a config color uniform).
-        vec3 lightColor = vec3(1.0, 1.0, 1.0) * intensity;
+        // Row 1: RGB color
+        vec4 colorTexel = texelFetch(matrixcraft_trail_lights, ivec2(i, 1), 0);
+        vec3 lightColor = colorTexel.rgb * intensity;
 
         float dist = distance(fragPos, lightPos);
         // simple smooth falloff radius (tweakable)
