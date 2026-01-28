@@ -46,15 +46,18 @@ vec3 decodeTrailLightPosition(vec4 texel) {
  * outColor: accumulator to add color into
  */
 void applyMatrixTrailLights(vec3 fragPos, inout vec3 outColor) {
+    // Loop through fixed-size texture width
     for (int i = 0; i < MATRIX_TRAIL_MAX_LIGHTS; i++) {
         // Row 0: position + intensity
         vec4 posTexel = texelFetch(matrixcraft_trail_lights, ivec2(i, 0), 0);
-        if (posTexel.a <= 0.0039) continue;
+        // alpha encodes intensity/presence, skip zero
+        if (posTexel.a <= 0.0039) continue; // ~1/255 threshold
 
+        // reconstruct pos and intensity
         vec3 lightPos = decodeTrailLightPosition(posTexel);
-        float intensity = posTexel.a;
+        float intensity = posTexel.a; // 0..1
 
-        // Row 1: RGB color
+        // Row 1: RGB color data
         vec4 colorTexel = texelFetch(matrixcraft_trail_lights, ivec2(i, 1), 0);
         vec3 lightColor = colorTexel.rgb * intensity;
 
