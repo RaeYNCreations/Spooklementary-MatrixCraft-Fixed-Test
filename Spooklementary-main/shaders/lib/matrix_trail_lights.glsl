@@ -16,9 +16,8 @@ vec3 decodeTrailLightPosition(vec4 texel) {
 }
 
 void applyMatrixTrailLights(vec3 fragPos, inout vec3 outColor) {
-    void applyMatrixTrailLights(vec3 fragPos, inout vec3 outColor) {
-    // DEBUG: Always add red to EVERYTHING to confirm function is called
-    outColor += vec3(0.1, 0.0, 0.0); // Slight red tint
+    // DEBUG: Make EVERYTHING bright green to confirm this runs
+    outColor += vec3(0.0, 0.5, 0.0);
     
     for (int i = 0; i < MATRIX_TRAIL_MAX_LIGHTS; i++) {
         vec4 posTexel = texelFetch(matrixcraft_trail_lights, ivec2(i, 0), 0);
@@ -31,17 +30,14 @@ void applyMatrixTrailLights(vec3 fragPos, inout vec3 outColor) {
         vec3 lightColor = colorTexel.rgb * intensity;
 
         float dist = distance(fragPos, lightPos);
-        
-        // DEBUG: MUCH larger radius to see if it's just a distance issue
-        float radius = 50.0; // Was 3.0 + intensity * 5.0
-        
+        float radius = 3.0 + intensity * 5.0;
         if (dist > radius) continue;
         
         float att = 1.0 - (dist / radius);
         att = att * att * att;
 
-        outColor += lightColor * att * intensity * 2.0; // Boosted multiplier
-        }
+        outColor += lightColor * att * intensity * 0.9;
     }
 }
+
 #endif

@@ -696,14 +696,18 @@ void DoLighting(inout vec4 color, inout vec3 shadowMult, vec3 playerPos, vec3 vi
     vec3 finalDiffuse = pow2(directionShade * vanillaAO) * (blockLighting + pow2(sceneLighting) + minLighting) + pow2(emission);
     finalDiffuse = sqrt(max(finalDiffuse, vec3(0.0)));
 
-    // MatrixCraft trail lights
+    // MatrixCraft trail lights - HEAVY DEBUG
     vec3 trailLightContribution = vec3(0.0);
 
     #if defined FRAGMENT_SHADER || defined FSH || defined FRAGMENT || !defined VERTEX_SHADER
-        // Direct inline code - no function call
+        int lightsProcessed = 0;
+        int lightsInRange = 0;
+        
         for (int i = 0; i < 64; i++) {
             vec4 posTexel = texelFetch(matrixcraft_trail_lights, ivec2(i, 0), 0);
             if (posTexel.a <= 0.0039) continue;
+            
+            lightsProcessed++;
             
             // Decode position
             vec3 rel;
@@ -718,16 +722,21 @@ void DoLighting(inout vec4 color, inout vec3 shadowMult, vec3 playerPos, vec3 vi
             
             float dist = distance(worldPos, lightPos);
             float radius = 50.0; // Large radius for testing
-            if (dist > radius) continue;
             
-            float att = 1.0 - (dist / radius);
-            att = att * att * att;
-            
-            trailLightContribution += lightColor * att * intensity * 2.0;
+            if (dist <= radius) {
+                lightsInRange++;
+                float att = 1.0 - (dist / radius);
+                att = att * att * att;
+                trailLightContribution += lightColor * att * intensity * 2.0;
+            }
         }
         
-        // DEBUG: Add red to confirm this code runs
-        trailLightContribution += vec3(0.1, 0.0, 0.0);
+        // Visual feedback: Blue if lights exist but out of range, Green if lights in range
+        if (lightsProcessed > 0 && lightsInRange == 0) {
+            trailLightContribution += vec3(0.0, 0.0, 0.1); // Blue = lights exist but too far
+        } else if (lightsInRange > 0) {
+            trailLightContribution += vec3(0.0, 0.2, 0.0); // Green = lights in range
+        }
     #endif
 
     // Apply Lighting
@@ -735,5 +744,4 @@ void DoLighting(inout vec4 color, inout vec3 shadowMult, vec3 playerPos, vec3 vi
     color.rgb += lightHighlight;
     color.rgb += trailLightContribution;
     color.rgb *= pow2(1.0 - darknessLightFactor);
-    color.rgb += vec3(0.2, 0.0, 0.0); // RED TINT ON EVERYTHING
 }
