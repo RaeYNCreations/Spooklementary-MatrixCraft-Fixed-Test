@@ -17,8 +17,7 @@ const float MATRIX_TRAIL_RANGE = 256.0; // must match POSITION_RANGE in Java (bl
 // requires sampling the texture (fragment shader only). For non-fragment we
 // provide a stub that returns a far-away position and zero contribution.
 #ifdef FRAGMENT_SHADER
-#extension GL_ARB_shading_language_420pack : enable
-layout(binding = 12) uniform sampler2D matrixcraft_trail_lights;
+uniform sampler2D matrixcraft_trail_lights;
 
 // Camera/world position helpers are expected to be defined by your other includes
 // (cameraPosition, etc). If you use cameraPositionBestFract + cameraPositionBestInt,
@@ -46,6 +45,13 @@ vec3 decodeTrailLightPosition(vec4 texel) {
  * outColor: accumulator to add color into
  */
 void applyMatrixTrailLights(vec3 fragPos, inout vec3 outColor) {
+     // DEBUG: Force a visible color if texture has ANY data
+    vec4 testTexel = texelFetch(matrixcraft_trail_lights, ivec2(0, 0), 0);
+    if (testTexel.a > 0.001) {
+        outColor += vec3(10.0, 0.0, 0.0); // BRIGHT RED if texture has data
+        return;
+    }
+    
     // Loop through fixed-size texture width
     for (int i = 0; i < MATRIX_TRAIL_MAX_LIGHTS; i++) {
         // Row 0: position + intensity
