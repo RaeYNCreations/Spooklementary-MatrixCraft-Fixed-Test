@@ -22,7 +22,7 @@
     #include "/lib/voxelization/lightVoxelization.glsl"
 #endif
 
-#ifdef FRAGMENT_SHADER
+#if defined FRAGMENT_SHADER || defined FSH || defined FRAGMENT || !defined VERTEX_SHADER
     #include "/lib/matrix_trail_lights.glsl"
 #endif
 
@@ -696,13 +696,44 @@ void DoLighting(inout vec4 color, inout vec3 shadowMult, vec3 playerPos, vec3 vi
     vec3 finalDiffuse = pow2(directionShade * vanillaAO) * (blockLighting + pow2(sceneLighting) + minLighting) + pow2(emission);
     finalDiffuse = sqrt(max(finalDiffuse, vec3(0.0)));
 
-    // MatrixCraft trail lights - add AFTER all processing
+    // MatrixCraft trail lights
     vec3 trailLightContribution = vec3(0.0);
-    applyMatrixTrailLights(worldPos, trailLightContribution);
+
+    #if defined FRAGMENT_SHADER || defined FSH || defined FRAGMENT || !defined VERTEX_SHADER
+        // Direct inline code - no function call
+        for (int i = 0; i < 64; i++) {
+            vec4 posTexel = texelFetch(matrixcraft_trail_lights, ivec2(i, 0), 0);
+            if (posTexel.a <= 0.0039) continue;
+            
+            // Decode position
+            vec3 rel;
+            rel.x = (posTexel.r * 2.0 - 1.0) * 256.0;
+            rel.y = (posTexel.g * 2.0 - 1.0) * 256.0;
+            rel.z = (posTexel.b * 2.0 - 1.0) * 256.0;
+            vec3 lightPos = cameraPosition + rel;
+            
+            float intensity = posTexel.a;
+            vec4 colorTexel = texelFetch(matrixcraft_trail_lights, ivec2(i, 1), 0);
+            vec3 lightColor = colorTexel.rgb * intensity;
+            
+            float dist = distance(worldPos, lightPos);
+            float radius = 50.0; // Large radius for testing
+            if (dist > radius) continue;
+            
+            float att = 1.0 - (dist / radius);
+            att = att * att * att;
+            
+            trailLightContribution += lightColor * att * intensity * 2.0;
+        }
+        
+        // DEBUG: Add red to confirm this code runs
+        trailLightContribution += vec3(0.1, 0.0, 0.0);
+    #endif
 
     // Apply Lighting
     color.rgb *= finalDiffuse;
     color.rgb += lightHighlight;
-    color.rgb += trailLightContribution; // Add trail lights as direct contribution
+    color.rgb += trailLightContribution;
     color.rgb *= pow2(1.0 - darknessLightFactor);
+    color.rgb += vec3(0.2, 0.0, 0.0); // RED TINT ON EVERYTHING
 }
